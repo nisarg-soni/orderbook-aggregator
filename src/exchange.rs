@@ -3,8 +3,9 @@ use anyhow::{Result, Error};
 use crate::orderbook::{Summary, Level};
 
 pub mod binance;
+pub mod bitstamp;
 
-#[derive(Clone, serde::Deserialize)]
+#[derive(Clone, serde::Deserialize, Debug)]
 pub struct Orderbook {
     pub bids: Vec<[String; 2]>,
     pub asks: Vec<[String; 2]>,

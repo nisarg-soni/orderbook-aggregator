@@ -18,7 +18,7 @@ impl BinanceExchange {
             let (_, ws_read) = match res {
                 Ok((stream, _)) => stream.split(),
                 Err(e) => {
-                    eprintln!("Failed to connect to binance stream: {e}");
+                    eprintln!("Failed to connect to Binance stream: {e}");
                     tokio::time::sleep(Duration::from_secs(10)).await;
                     continue;
                 }
@@ -39,7 +39,7 @@ impl BinanceExchange {
                                 println!("{:?}", summary);
                             }
                             Err(_) => {
-                                eprintln!("Invalid binance message format `{msg}`");
+                                eprintln!("Invalid Binance message format `{msg}`");
                             }
                         }
                     } else {

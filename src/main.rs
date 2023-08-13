@@ -24,7 +24,8 @@ struct Cli {
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    let _ = exchange::binance::BinanceExchange::start(cli.trade_pair, cli.binance_url).await?;
+    // let _ = exchange::binance::BinanceExchange::start(cli.trade_pair, cli.binance_url).await?;
+    let _ = exchange::bitstamp::BitstampExchange::start(cli.trade_pair, cli.bitstamp_url).await?;
 
     Ok(())
 }
