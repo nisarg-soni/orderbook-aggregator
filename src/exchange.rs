@@ -1,6 +1,6 @@
-use anyhow::{Result, Error};
+use anyhow::{Error, Result};
 
-use crate::orderbook::{Summary, Level};
+use crate::orderbook::{Level, Summary};
 
 pub mod binance;
 pub mod bitstamp;
@@ -11,16 +11,14 @@ pub struct Orderbook {
     pub asks: Vec<[String; 2]>,
 }
 
-impl Orderbook {    
+impl Orderbook {
     pub fn convert(self, exchange: &str) -> Result<Summary> {
         let mut summary = Summary {
             bids: self
                 .bids
                 .iter()
                 .take(10)
-                .map(|b| {
-                    Self::make_level(exchange, b)
-                })
+                .map(|b| Self::make_level(exchange, b))
                 .collect::<Result<Vec<Level>, Error>>()?,
             asks: self
                 .asks

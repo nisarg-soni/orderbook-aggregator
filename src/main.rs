@@ -2,6 +2,7 @@
 use clap::Parser;
 
 pub mod exchange;
+pub mod merger;
 
 pub mod orderbook {
     tonic::include_proto!("orderbook");
@@ -24,8 +25,9 @@ struct Cli {
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
+    merger::merger(cli.trade_pair, cli.binance_url, cli.bitstamp_url).await?;
     // let _ = exchange::binance::BinanceExchange::start(cli.trade_pair, cli.binance_url).await?;
-    let _ = exchange::bitstamp::BitstampExchange::start(cli.trade_pair, cli.bitstamp_url).await?;
+    // let _ = exchange::bitstamp::BitstampExchange::start(cli.trade_pair, cli.bitstamp_url).await?;
 
     Ok(())
 }

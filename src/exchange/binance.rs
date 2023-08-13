@@ -1,8 +1,10 @@
 use futures_util::StreamExt;
+use tokio::sync::mpsc;
 use tokio::time::Duration;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 
 use super::Orderbook;
+use crate::orderbook::Summary;
 
 const EXCHANGE: &str = "BINANCE";
 
@@ -10,12 +12,16 @@ const EXCHANGE: &str = "BINANCE";
 pub struct BinanceExchange {}
 
 impl BinanceExchange {
-    pub async fn start(symbol: String, url: String) -> anyhow::Result<Self> {
+    pub async fn start(
+        symbol: String,
+        url: String,
+        channel: mpsc::Sender<Summary>,
+    ) -> anyhow::Result<()> {
         let url = url + "/ws/" + &symbol + "@depth10@100ms";
 
         loop {
             let res = connect_async(url.clone()).await;
-            let (_, ws_read) = match res {
+            let (_, mut ws_read) = match res {
                 Ok((stream, _)) => stream.split(),
                 Err(e) => {
                     eprintln!("Failed to connect to Binance stream: {e}");
@@ -24,31 +30,27 @@ impl BinanceExchange {
                 }
             };
 
-            let incoming_messages = ws_read.filter_map(|message| async {
-                match message {
-                    Ok(Message::Text(text)) => Some(text),
-                    _ => None,
-                }
-            });
-
-            incoming_messages
-                .for_each(|msg| {
-                    if let Ok(parsed) = serde_json::from_str::<Orderbook>(&msg) {
-                        match parsed.convert(EXCHANGE) {
-                            Ok(summary) => {
-                                println!("{:?}", summary);
+            while let Some(msg) = ws_read.next().await {
+                match msg {
+                    Ok(Message::Text(text)) => {
+                        if let Ok(parsed) = serde_json::from_str::<Orderbook>(&text) {
+                            match parsed.convert(EXCHANGE) {
+                                Ok(summary) => {
+                                    channel.send(summary).await?;
+                                }
+                                Err(_) => {
+                                    eprintln!("Invalid Binance message format {text}");
+                                }
                             }
-                            Err(_) => {
-                                eprintln!("Invalid Binance message format `{msg}`");
-                            }
+                        } else {
+                            eprintln!("Error parsing Binance orderbook");
                         }
-                    } else {
-                        eprintln!("Error parsing Binance orderbook");
                     }
-
-                    async {}
-                })
-                .await;
+                    _ => {
+                        continue;
+                    }
+                }
+            }
 
             tokio::time::sleep(Duration::from_secs(12)).await;
         }
