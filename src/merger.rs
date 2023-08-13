@@ -1,45 +1,59 @@
-use anyhow::Result;
-use tokio::sync::mpsc;
+use std::sync::{Arc, Mutex};
+use tokio::sync::broadcast::{error::RecvError, Receiver, Sender};
 
-use crate::exchange;
 use crate::orderbook::Summary;
 
-pub async fn merger(symbol: String, binance_url: String, bitstamp_url: String) -> Result<()> {
-    let (sender1, receiver1) = mpsc::channel(1);
-    let (sender2, receiver2) = mpsc::channel(1);
-
-    let sym_copy = symbol.clone();
-    let binance_handle = tokio::spawn(async move {
-        exchange::binance::BinanceExchange::start(symbol, binance_url, sender1).await
-    });
-
-    let bitstamp_handle = tokio::spawn(async move {
-        exchange::bitstamp::BitstampExchange::start(sym_copy, bitstamp_url, sender2).await
-    });
-
-    tokio::spawn(async move {
-        consumer_task(receiver1, receiver2).await;
-    });
-
-    binance_handle.await??;
-    bitstamp_handle.await??;
-
-    Ok(())
+#[derive(Debug)]
+pub struct Merger {
+    pub sender: Sender<Summary>,
 }
 
-async fn consumer_task(
-    mut binance_reciever: mpsc::Receiver<Summary>,
-    mut bitstamp_reciever: mpsc::Receiver<Summary>,
-) {
-    loop {
-        let (binance_msg, bitstamp_msg) =
-            futures_util::join!(binance_reciever.recv(), bitstamp_reciever.recv());
+impl Merger {
+    pub fn processor(
+        mut binance_rec: Receiver<Summary>,
+        mut bitstamp_rec: Receiver<Summary>,
+        sender: Sender<Summary>,
+    ) -> Self {
+        let sender_bin = sender.clone();
+        let sender_bit = sender.clone();
 
-        if binance_msg.is_some() && bitstamp_msg.is_some() {
-            let merged = merge_summaries(&[binance_msg.unwrap(), bitstamp_msg.unwrap()]);
+        let summaries = Arc::new(Mutex::new(vec![Summary::default(); 2]));
+        let summaries_copy = Arc::clone(&summaries);
+        tokio::spawn(async move {
+            loop {
+                match binance_rec.recv().await {
+                    Ok(summary) => {
+                        let mut summaries = summaries.lock().unwrap();
+                        summaries[1] = summary;
+                        let merged = merge_summaries(&summaries);
+                        _ = sender_bin.send(merged);
+                    }
+                    Err(RecvError::Lagged(_)) => {}
+                    Err(RecvError::Closed) => {
+                        eprintln!("Binance channel closed");
+                    }
+                }
+            }
+        });
 
-            println!("{:?}", merged);
-        }
+        tokio::spawn(async move {
+            loop {
+                match bitstamp_rec.recv().await {
+                    Ok(summary) => {
+                        let mut summaries = summaries_copy.lock().unwrap();
+                        summaries[1] = summary;
+                        let merged = merge_summaries(&summaries);
+                        _ = sender_bit.send(merged);
+                    }
+                    Err(RecvError::Lagged(_)) => {}
+                    Err(RecvError::Closed) => {
+                        eprintln!("Bitstamp channel closed");
+                    }
+                }
+            }
+        });
+
+        Self { sender }
     }
 }
 
