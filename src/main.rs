@@ -19,41 +19,59 @@ pub mod orderbook {
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
 struct Cli {
+    // Required trade pair
     #[clap(long, value_parser, default_value = "ethbtc")]
     trade_pair: String,
 
+    // URL for ws connection from Binance
     #[clap(long, value_parser, default_value = "wss://stream.binance.com:9443")]
     binance_url: String,
 
+    // URL for ws connection from bitstamp
     #[clap(long, value_parser, default_value = "wss://ws.bitstamp.net")]
     bitstamp_url: String,
+    
+    // URL for ws connection from bitstamp
+    #[clap(long, value_parser, default_value = "7050")]
+    port: String,
 }
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
+    // Channel for merged orderbooks 
     let (sender, _) = channel(1);
 
+    // Channels for binance orderbooks and bitstamp orderooks
     let (sender1, _) = channel(1);
     let (sender2, _) = channel(1);
 
-    let sym_copy = cli.trade_pair.clone();
-    let (_, _) = futures_util::try_join!(
-        exchange::binance::BinanceExchange::start(cli.trade_pair, cli.binance_url, sender1.clone()),
-        exchange::bitstamp::BitstampExchange::start(sym_copy, cli.bitstamp_url, sender2.clone()),
-    )?;
+    // Start receiving from Binance
+    exchange::binance::BinanceExchange::start(
+        cli.trade_pair.clone(),
+        cli.binance_url,
+        sender1.clone(),
+    )
+    .await?;
+
+    // Start receiving from Bitstamp
+    exchange::bitstamp::BitstampExchange::start(cli.trade_pair, cli.bitstamp_url, sender2.clone())
+        .await?;
 
     let _ = Merger::processor(sender1.subscribe(), sender2.subscribe(), sender.clone());
 
     let server = OrderbookAggregatorServer::new(GRPC { sender });
 
+    // Start GRPC server
+    let port = cli.port.parse::<u16>().unwrap_or(7050);
     tonic::transport::Server::builder()
         .add_service(server)
-        .serve(std::net::SocketAddr::from(([127, 0, 0, 1], 7016)))
+        .serve(std::net::SocketAddr::from(([127, 0, 0, 1], port)))
         .await?;
     Ok(())
 }
 
+// GRPC server method implementation
 #[derive(Debug)]
 pub struct GRPC {
     sender: Sender<Summary>,

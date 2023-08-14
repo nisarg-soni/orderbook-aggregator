@@ -8,12 +8,11 @@ use super::Orderbook;
 use crate::orderbook::Summary;
 
 #[derive(Debug)]
-pub struct BitstampExchange {
-    pub sender: Sender<Summary>,
-}
+pub struct BitstampExchange {}
 
 impl BitstampExchange {
-    pub async fn start(symbol: String, url: String, sender: Sender<Summary>) -> Result<Self> {
+    // One process to fetch Bitstamp exchange order books and push to channel
+    pub async fn start(symbol: String, url: String, sender: Sender<Summary>) -> Result<()> {
         let subscription = r#"{"event":"bts:subscribe","data":{"channel":"order_book_"#.to_string()
             + &symbol
             + r#""}}"#;
@@ -57,7 +56,7 @@ impl BitstampExchange {
 
         println!("Bitstamp connected");
 
-        Ok(BitstampExchange { sender })
+        Ok(())
     }
 }
 
