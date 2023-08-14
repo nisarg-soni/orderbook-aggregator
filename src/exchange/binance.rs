@@ -8,12 +8,11 @@ use super::Orderbook;
 use crate::orderbook::Summary;
 
 #[derive(Debug)]
-pub struct BinanceExchange {
-    pub sender: Sender<Summary>,
-}
+pub struct BinanceExchange {}
 
 impl BinanceExchange {
-    pub async fn start(symbol: String, url: String, sender: Sender<Summary>) -> Result<Self> {
+    // One process to fetch Binance exchange order books and push to channel
+    pub async fn start(symbol: String, url: String, sender: Sender<Summary>) -> Result<()> {
         let url = url + "/ws/" + &symbol + "@depth10@100ms";
 
         let sender_copy = sender.clone();
@@ -46,6 +45,6 @@ impl BinanceExchange {
 
         println!("Binance connected");
 
-        Ok(BinanceExchange { sender })
+        Ok(())
     }
 }

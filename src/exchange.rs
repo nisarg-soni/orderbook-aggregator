@@ -5,6 +5,7 @@ use crate::orderbook::{Level, Summary};
 pub mod binance;
 pub mod bitstamp;
 
+// Basic orderbook struct for exchange response
 #[derive(Clone, serde::Deserialize, Debug)]
 pub struct Orderbook {
     pub bids: Vec<[String; 2]>,
@@ -12,6 +13,7 @@ pub struct Orderbook {
 }
 
 impl Orderbook {
+    // convert orderbook to Summary for GRPC
     pub fn convert(self, exchange: &str) -> Result<Summary> {
         let mut summary = Summary {
             bids: self
