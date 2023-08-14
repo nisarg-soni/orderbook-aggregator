@@ -5,6 +5,11 @@ GRPC server to fetch orderbooks from crypto exchanges, sort, merge and publish t
 
  - Binance
  - Bitstamp
+
+## To Do
+ - Write tests 
+ - Better logging
+ - Support for multiple trade pairs at once
 ## Run
 
     cargo run --release -- --trade-pair <trade_pair> --binance-url <binance_url> --bitstamp-url <bitstamp_url> --port <grpc_port>
