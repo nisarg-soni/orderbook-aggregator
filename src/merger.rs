@@ -86,7 +86,7 @@ impl Merger {
             result.spread = result.asks[0].price - result.bids[0].price;
         }
 
-        println!("{:?}", result);
+        // println!("{:?}", result);
         result
     }
 }

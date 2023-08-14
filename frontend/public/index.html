@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Orderbook Aggregator</title>
+    <style>
+       
+       body {
+            font-family: 'Roboto', sans-serif;
+            width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 30px;
+            color: #666;
+            margin: 0 0 20px 0;
+            text-align: center;
+        }
+
+        .column {
+            width: 400px;
+            display: inline-block;
+        }
+
+        .column h2 {
+            text-align: left;
+        }
+
+        .column:nth-child(3) h2 {
+            text-align: right;
+        }
+
+        .column:nth-child(3) div {
+            text-align: right;
+        }
+
+        #spread {
+            font-size: 25px;
+            margin: 50px 0 0 0;
+            text-align: center;
+        }
+    
+    </style>
+</head>
+
+<body>
+    <h1>Aggregated Orderbook</h1>
+    <div class="column">
+        <h2>Bids</h2>
+        <div id="bids_placeholder"></div>
+    </div>
+    <div class="column">
+        <h2>Asks</h2>
+        <div id="asks_placeholder"></div>
+    </div>
+    <div id="spread"></div>
+    <script type="text/javascript">
+        const bidsPlaceholder = document.getElementById("bids_placeholder");
+        const asksPlaceholder = document.getElementById("asks_placeholder");
+        const spreadDiv = document.getElementById("spread");
+
+        var ws;
+        initWebsocket();
+
+        function updateDom(ev) {
+            bidsPlaceholder.innerHTML = '';
+            asksPlaceholder.innerHTML = '';
+            for (const bid of ev.bids) {
+                bidsPlaceholder.innerHTML += `${bid.amount.toFixed(6)} ETH @ ${bid.price.toFixed(6)} BTC (${bid.exchange}) <br/>`;
+            }
+            for (const ask of ev.asks) {
+                asksPlaceholder.innerHTML += `(${ask.exchange}) ${ask.amount.toFixed(6)} ETH @ ${ask.price.toFixed(6)} BTC <br/>`;
+            }
+            spreadDiv.innerHTML = `Spread ${ev.spread.toFixed(6)} BTC`;
+        }
+
+        function initWebsocket() {
+            ws = new WebSocket("ws://localhost:7000");
+            ws.onmessage = function (evt) {
+                const ev = JSON.parse(evt.data);
+                updateDom(ev)
+
+            };
+            ws.onclose = function () {
+                console.log('Websocket connection closed');
+                initWebsocket();
+            };
+        }
+    </script>
+</body>
+
+</html>

@@ -1,4 +1,4 @@
-# Orderbook Aggregator
+# Orderbook Merger 
 
 GRPC server to fetch orderbooks from crypto exchanges, sort, merge and publish the resultant orderbook. 
 ## Current supported exchanges:
@@ -21,3 +21,14 @@ GRPC server to fetch orderbooks from crypto exchanges, sort, merge and publish t
  - The program serve merged order books if one of the exchange does not provide order book for the trade pair, then order book from only one exchange will be served. This also happens, up till the first order book is received from both the exchanges.
  - Currently, the server runs for a single trade pair at a time.
  - `orderbook.proto` contains the defination of the message format.
+## Frontend
+Basic frontend is implemented, The frontend shows only ETH and BTC(symbols are hardcoded).
+### Run Commands
+
+    cd frontend && npm install
+    npm start
+### Example UI
+
+![](ui.png "Example UI")
+
+NOTE: The frontend is just for viewing purpose and might not be the most optimal implementation.
