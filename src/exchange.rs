@@ -1,4 +1,4 @@
-use anyhow::{Error, Result};
+use anyhow::{Context, Error, Result};
 
 use crate::orderbook::{Level, Summary};
 
@@ -21,13 +21,15 @@ impl Orderbook {
                 .iter()
                 .take(10)
                 .map(|b| Self::make_level(exchange, b))
-                .collect::<Result<Vec<Level>, Error>>()?,
+                .collect::<Result<Vec<Level>, Error>>()
+                .context("Failed to parse bids")?,
             asks: self
                 .asks
                 .iter()
                 .take(10)
                 .map(|b| Self::make_level(exchange, b))
-                .collect::<Result<Vec<Level>, Error>>()?,
+                .collect::<Result<Vec<Level>, Error>>()
+                .context("Failed to parse Asks")?,
             ..<_>::default()
         };
 
@@ -39,8 +41,8 @@ impl Orderbook {
     }
 
     fn make_level(exchange: &str, arr: &[String; 2]) -> Result<Level> {
-        let price = arr[0].parse::<f64>()?;
-        let amount = arr[1].parse::<f64>()?;
+        let price = arr[0].parse::<f64>().context("Failed to parse price for levels")?;
+        let amount = arr[1].parse::<f64>().context("Failed to parse amount for levels")?;
 
         Ok(Level {
             exchange: exchange.to_string(),

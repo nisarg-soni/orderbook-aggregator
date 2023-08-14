@@ -2,6 +2,7 @@ use merger::Merger;
 use orderbook::orderbook_aggregator_server::{OrderbookAggregator, OrderbookAggregatorServer};
 use orderbook::{Empty, Summary};
 
+use anyhow::Context;
 use clap::Parser;
 use futures_util::{Stream, StreamExt};
 use std::pin::Pin;
@@ -52,11 +53,13 @@ async fn main() -> anyhow::Result<()> {
         cli.binance_url,
         sender1.clone(),
     )
-    .await?;
+    .await
+    .context("Failed to start Binance receiver")?;
 
     // Start receiving from Bitstamp
     exchange::bitstamp::BitstampExchange::start(cli.trade_pair, cli.bitstamp_url, sender2.clone())
-        .await?;
+        .await
+        .context("Failed to start Bitstamp receiver")?;
 
     let _ = Merger::processor(sender1.subscribe(), sender2.subscribe(), sender.clone());
 
@@ -67,7 +70,8 @@ async fn main() -> anyhow::Result<()> {
     tonic::transport::Server::builder()
         .add_service(server)
         .serve(std::net::SocketAddr::from(([127, 0, 0, 1], port)))
-        .await?;
+        .await
+        .context("Failed to satrt gRPC server")?;
     Ok(())
 }
 
