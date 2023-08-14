@@ -19,6 +19,7 @@ impl BinanceExchange {
 
         tokio::spawn(async move {
             loop {
+                // connect to Binance websocket
                 let (_, mut ws_read) = match connect_async(&url).await {
                     Ok((stream, _)) => stream.split(),
                     Err(err) => {
@@ -28,11 +29,13 @@ impl BinanceExchange {
                     }
                 };
 
+                // Listen to messages
                 while let Some(msg) = ws_read.next().await {
                     let Ok(Message::Text(text)) = msg else { continue };
                     let Ok(data) = serde_json::from_str::<Orderbook>(&text) else { continue };
                     match data.convert("BINANCE") {
                         Ok(summary) => {
+                            // send the orderbook to channel
                             _ = sender_copy.send(summary);
                         }
                         Err(err) => {

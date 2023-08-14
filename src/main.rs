@@ -31,7 +31,7 @@ struct Cli {
     // URL for ws connection from bitstamp
     #[clap(long, value_parser, default_value = "wss://ws.bitstamp.net")]
     bitstamp_url: String,
-    
+
     // URL for ws connection from bitstamp
     #[clap(long, value_parser, default_value = "7050")]
     port: String,
@@ -40,7 +40,7 @@ struct Cli {
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    // Channel for merged orderbooks 
+    // Channel for merged orderbooks
     let (sender, _) = channel(1);
 
     // Channels for binance orderbooks and bitstamp orderooks
@@ -61,7 +61,7 @@ async fn main() -> anyhow::Result<()> {
         .await
         .context("Failed to start Bitstamp receiver")?;
 
-    let _ = Merger::processor(sender1.subscribe(), sender2.subscribe(), sender.clone());
+    Merger::processor(sender1.subscribe(), sender2.subscribe(), sender.clone());
 
     let server = OrderbookAggregatorServer::new(GRPC { sender });
 
@@ -91,7 +91,8 @@ impl OrderbookAggregator for GRPC {
     ) -> Result<Response<Self::BookSummaryStream>, Status> {
         let receiever = self.sender.subscribe();
 
-        let out = BroadcastStream::new(receiever).filter_map(|r| {
+        // Conversion of Receiver<Summary> into Stream<Receiver<Result<Summary, Status>>>
+        let result = BroadcastStream::new(receiever).filter_map(|r| {
             std::future::ready(match r {
                 Ok(r) => Some(Ok::<_, _>(r)),
                 _ => None,
@@ -99,7 +100,7 @@ impl OrderbookAggregator for GRPC {
         });
 
         Ok(tonic::Response::new(
-            Box::pin(out) as Self::BookSummaryStream
+            Box::pin(result) as Self::BookSummaryStream
         ))
     }
 }

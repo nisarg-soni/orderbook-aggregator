@@ -41,8 +41,12 @@ impl Orderbook {
     }
 
     fn make_level(exchange: &str, arr: &[String; 2]) -> Result<Level> {
-        let price = arr[0].parse::<f64>().context("Failed to parse price for levels")?;
-        let amount = arr[1].parse::<f64>().context("Failed to parse amount for levels")?;
+        let price = arr[0]
+            .parse::<f64>()
+            .context("Failed to parse price for levels")?;
+        let amount = arr[1]
+            .parse::<f64>()
+            .context("Failed to parse amount for levels")?;
 
         Ok(Level {
             exchange: exchange.to_string(),

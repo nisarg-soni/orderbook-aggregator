@@ -4,9 +4,7 @@ use tokio::sync::broadcast::{error::RecvError, Receiver, Sender};
 use crate::orderbook::Summary;
 
 #[derive(Debug)]
-pub struct Merger {
-    pub sender: Sender<Summary>,
-}
+pub struct Merger {}
 
 impl Merger {
     // recieve from both Binance and Bitstamp channels and merge and push to final channel whenever newer data comes in
@@ -14,19 +12,23 @@ impl Merger {
         mut binance_rec: Receiver<Summary>,
         mut bitstamp_rec: Receiver<Summary>,
         sender: Sender<Summary>,
-    ) -> Self {
+    ) {
         let sender_bin = sender.clone();
         let sender_bit = sender.clone();
 
         let summaries = Arc::new(Mutex::new(vec![Summary::default(); 2]));
         let summaries_copy = Arc::clone(&summaries);
+
+        // Listen to incoming messages from Binance
         tokio::spawn(async move {
             loop {
                 match binance_rec.recv().await {
                     Ok(summary) => {
+                        // lock summaries before reading and processing to avoid race conditions
                         let mut summaries = summaries.lock().unwrap();
                         summaries[0] = summary;
                         let merged = Self::merge_summaries(&summaries);
+                        // Send merged summary to gRPC channel
                         _ = sender_bin.send(merged);
                     }
                     Err(RecvError::Lagged(_)) => {}
@@ -37,13 +39,16 @@ impl Merger {
             }
         });
 
+        // Listen to incoming messages from Bitstamp
         tokio::spawn(async move {
             loop {
                 match bitstamp_rec.recv().await {
                     Ok(summary) => {
+                        // lock summaries before reading and processing to avoid race conditions
                         let mut summaries = summaries_copy.lock().unwrap();
                         summaries[1] = summary;
                         let merged = Self::merge_summaries(&summaries);
+                        // Send merged summary to gRPC channel
                         _ = sender_bit.send(merged);
                     }
                     Err(RecvError::Lagged(_)) => {}
@@ -53,8 +58,6 @@ impl Merger {
                 }
             }
         });
-
-        Self { sender }
     }
 
     // sorts bids asks and discard after depth 10, also calculates spread
