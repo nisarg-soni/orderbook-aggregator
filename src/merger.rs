@@ -1,4 +1,3 @@
-use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast::{error::RecvError, Receiver, Sender};
 
 use crate::orderbook::Summary;
@@ -13,47 +12,40 @@ impl Merger {
         mut bitstamp_rec: Receiver<Summary>,
         sender: Sender<Summary>,
     ) {
-        let sender_bin = sender.clone();
-        let sender_bit = sender.clone();
+        let mut summaries: Vec<Summary> = vec![Summary::default(); 2];
 
-        let summaries = Arc::new(Mutex::new(vec![Summary::default(); 2]));
-        let summaries_copy = Arc::clone(&summaries);
-
-        // Listen to incoming messages from Binance
         tokio::spawn(async move {
             loop {
-                match binance_rec.recv().await {
-                    Ok(summary) => {
-                        // lock summaries before reading and processing to avoid race conditions
-                        let mut summaries = summaries.lock().unwrap();
-                        summaries[0] = summary;
-                        let merged = Self::merge_summaries(&summaries);
-                        // Send merged summary to gRPC channel
-                        _ = sender_bin.send(merged);
-                    }
-                    Err(RecvError::Lagged(_)) => {}
-                    Err(RecvError::Closed) => {
-                        eprintln!("Binance channel closed");
-                    }
-                }
-            }
-        });
+                // await futures for the first new summary recieved from Binance or Bitstamp
+                tokio::select! {
+                    summary = binance_rec.recv() => {
+                        match summary {
+                            Ok(summary) => {
+                                summaries[0] = summary;
+                                let merged = Self::merge_summaries(&summaries);
+                                // Send merged summary to gRPC channel
+                                _ = sender.send(merged);
+                            }
+                            Err(RecvError::Lagged(_)) => {}
+                            Err(RecvError::Closed) => {
+                                eprintln!("Binance channel closed");
+                            }
+                        }
 
-        // Listen to incoming messages from Bitstamp
-        tokio::spawn(async move {
-            loop {
-                match bitstamp_rec.recv().await {
-                    Ok(summary) => {
-                        // lock summaries before reading and processing to avoid race conditions
-                        let mut summaries = summaries_copy.lock().unwrap();
-                        summaries[1] = summary;
-                        let merged = Self::merge_summaries(&summaries);
-                        // Send merged summary to gRPC channel
-                        _ = sender_bit.send(merged);
-                    }
-                    Err(RecvError::Lagged(_)) => {}
-                    Err(RecvError::Closed) => {
-                        eprintln!("Bitstamp channel closed");
+                    },
+                    summary = bitstamp_rec.recv() => {
+                        match summary {
+                            Ok(summary) => {
+                                summaries[1] = summary;
+                                let merged = Self::merge_summaries(&summaries);
+                                // Send merged summary to gRPC channel
+                                _ = sender.send(merged);
+                            }
+                            Err(RecvError::Lagged(_)) => {}
+                            Err(RecvError::Closed) => {
+                                eprintln!("Bitstamp channel closed");
+                            }
+                        }
                     }
                 }
             }
