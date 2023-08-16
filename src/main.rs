@@ -32,7 +32,7 @@ struct Cli {
     #[clap(long, value_parser, default_value = "wss://ws.bitstamp.net")]
     bitstamp_url: String,
 
-    // URL for ws connection from bitstamp
+    // Port for gRPC server
     #[clap(long, value_parser, default_value = "7050")]
     port: String,
 }
