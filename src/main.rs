@@ -40,6 +40,17 @@ struct Cli {
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
+    run(cli.trade_pair, cli.binance_url, cli.bitstamp_url, cli.port).await?;
+
+    Ok(())
+}
+
+pub async fn run(
+    trade_pair: String,
+    binance_url: String,
+    bitstamp_url: String,
+    port: String,
+) -> anyhow::Result<()> {
     // Channel for merged orderbooks
     let (sender, _) = channel(1);
 
@@ -48,16 +59,12 @@ async fn main() -> anyhow::Result<()> {
     let (sender2, _) = channel(1);
 
     // Start receiving from Binance
-    exchange::binance::BinanceExchange::start(
-        cli.trade_pair.clone(),
-        cli.binance_url,
-        sender1.clone(),
-    )
-    .await
-    .context("Failed to start Binance receiver")?;
+    exchange::binance::BinanceExchange::start(trade_pair.clone(), binance_url, sender1.clone())
+        .await
+        .context("Failed to start Binance receiver")?;
 
     // Start receiving from Bitstamp
-    exchange::bitstamp::BitstampExchange::start(cli.trade_pair, cli.bitstamp_url, sender2.clone())
+    exchange::bitstamp::BitstampExchange::start(trade_pair, bitstamp_url, sender2.clone())
         .await
         .context("Failed to start Bitstamp receiver")?;
 
@@ -66,7 +73,7 @@ async fn main() -> anyhow::Result<()> {
     let server = OrderbookAggregatorServer::new(GRPC { sender });
 
     // Start GRPC server
-    let port = cli.port.parse::<u16>().unwrap_or(7050);
+    let port = port.parse::<u16>().unwrap_or(7050);
     tonic::transport::Server::builder()
         .add_service(server)
         .serve(std::net::SocketAddr::from(([127, 0, 0, 1], port)))
