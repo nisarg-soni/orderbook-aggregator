@@ -6,7 +6,7 @@ pub mod binance;
 pub mod bitstamp;
 
 // Basic orderbook struct for exchange response
-#[derive(Clone, serde::Deserialize, Debug)]
+#[derive(Clone, serde::Deserialize, Debug, serde::Serialize, Default)]
 pub struct Orderbook {
     pub bids: Vec<[String; 2]>,
     pub asks: Vec<[String; 2]>,

@@ -17,6 +17,9 @@ pub mod orderbook {
     tonic::include_proto!("orderbook");
 }
 
+#[cfg(test)]
+pub mod tests;
+
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
 struct Cli {
@@ -79,6 +82,7 @@ pub async fn run(
         .serve(std::net::SocketAddr::from(([127, 0, 0, 1], port)))
         .await
         .context("Failed to satrt gRPC server")?;
+
     Ok(())
 }
 
