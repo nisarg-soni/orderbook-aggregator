@@ -7,6 +7,8 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.68"
+approx = "0.5.1"
+axum = { version = "0.6.3", features = ["ws"] }
 async-stream = "0.3.5"
 clap = {version = "4.3.21", features = ["derive"]}
 futures-util = "0.3.28"
