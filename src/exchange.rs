@@ -33,10 +33,6 @@ impl Orderbook {
             ..<_>::default()
         };
 
-        if !summary.bids.is_empty() && !summary.asks.is_empty() {
-            summary.spread = summary.asks[0].price - summary.bids[0].price;
-        }
-
         Ok(summary)
     }
 
